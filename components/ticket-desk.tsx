@@ -186,11 +186,6 @@ export function TicketDesk() {
     setPrintId(id);
   }
 
-  function printVisible() {
-    setPrintId(null);
-    requestAnimationFrame(() => window.print());
-  }
-
   return (
     <div className={`desk ${printId ? "printing-one" : ""}`} data-print-id={printId ?? ""}>
       <header className="mast no-print">
@@ -407,9 +402,6 @@ export function TicketDesk() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-          <button type="button" className="btn btn-ghost" onClick={printVisible} disabled={listLoading || tickets.length === 0}>
-            Print visible
-          </button>
         </div>
       </div>
 
