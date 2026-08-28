@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { DateField } from "@/components/date-field";
+import { EditTicketDialog, type EditFields } from "@/components/edit-ticket-dialog";
 import { ReceiptCard } from "@/components/receipt-card";
 import { TicketTable } from "@/components/ticket-table";
 import { Calendar } from "@/components/ui/calendar";
@@ -76,6 +77,9 @@ export function TicketDesk() {
   const [listLoading, setListLoading] = useState(true);
   const [numberTaken, setNumberTaken] = useState(false);
   const [numberChecking, setNumberChecking] = useState(false);
+  const [editing, setEditing] = useState<TicketDTO | null>(null);
+  const [editError, setEditError] = useState("");
+  const [saving, setSaving] = useState(false);
   const loadSeq = useRef(0);
   const suggestedNumber = useRef("");
   const numberCheckSeq = useRef(0);
@@ -255,6 +259,29 @@ export function TicketDesk() {
     }
   }
 
+  async function onSaveEdit(_ticket: TicketDTO, fields: EditFields) {
+    if (!editing) return;
+    setEditError("");
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/tickets/${editing.number}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(fields),
+      });
+      const payload = await readJson(res);
+      if (!res.ok) throw new Error(payload.error ?? "Could not save ticket.");
+      const saved = payload as TicketDTO;
+      setEditing(null);
+      setLatestTicket((current) => (current?.id === saved.id ? saved : current));
+      await load(filter, debouncedQuery, page, datePreset, customFrom, customTo);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Could not save ticket.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function printTicket(id: string) {
     const fromTable = tickets.find((ticket) => ticket.id === id);
     if (fromTable && latestTicket?.id !== id) {
@@ -405,6 +432,10 @@ export function TicketDesk() {
             printing={printId === latestTicket.id}
             onConfirmClaim={onConfirmClaim}
             onPrint={printTicket}
+            onEdit={() => {
+              setEditError("");
+              setEditing(latestTicket);
+            }}
           />
         </section>
       ) : null}
@@ -545,7 +576,26 @@ export function TicketDesk() {
         onPageChange={setPage}
         onConfirmClaim={onConfirmClaim}
         onPrint={printTicket}
+        onEdit={(ticket) => {
+          setEditError("");
+          setEditing(ticket);
+        }}
       />
+
+      {editing ? (
+        <EditTicketDialog
+          key={editing.id}
+          ticket={editing}
+          busy={saving}
+          error={editError}
+          onClose={() => {
+            if (saving) return;
+            setEditing(null);
+            setEditError("");
+          }}
+          onSave={onSaveEdit}
+        />
+      ) : null}
     </div>
   );
 }

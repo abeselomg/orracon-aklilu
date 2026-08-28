@@ -1,5 +1,6 @@
 "use client";
 
+import { Pencil } from "lucide-react";
 import type { TicketDTO } from "@/lib/tickets";
 import { CraneWatermark } from "@/components/crane-watermark";
 import { MarkPaidButton } from "@/components/mark-paid-button";
@@ -11,6 +12,7 @@ type ReceiptCardProps = {
   busy: boolean;
   onConfirmClaim: (number: number) => void;
   onPrint: (id: string) => void;
+  onEdit: () => void;
   printing: boolean;
 };
 
@@ -19,6 +21,7 @@ export function ReceiptCard({
   busy,
   onConfirmClaim,
   onPrint,
+  onEdit,
   printing,
 }: ReceiptCardProps) {
   const claimed = ticket.status === "claimed";
@@ -93,6 +96,9 @@ export function ReceiptCard({
         )}
         <button type="button" className="btn btn-print" onClick={() => onPrint(ticket.id)}>
           Print
+        </button>
+        <button type="button" className="btn btn-print btn-icon" aria-label="Edit" onClick={onEdit}>
+          <Pencil size={16} />
         </button>
       </div>
     </article>

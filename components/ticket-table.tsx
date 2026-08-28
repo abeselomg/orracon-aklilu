@@ -1,5 +1,6 @@
 "use client";
 
+import { Pencil } from "lucide-react";
 import { formatAmount, formatPaidAt, type TicketDTO } from "@/lib/tickets";
 import { MarkPaidButton } from "@/components/mark-paid-button";
 
@@ -18,6 +19,7 @@ type TicketTableProps = {
   onPageChange: (page: number) => void;
   onConfirmClaim: (number: number) => void;
   onPrint: (id: string) => void;
+  onEdit: (ticket: TicketDTO) => void;
 };
 
 export function TicketTable({
@@ -28,6 +30,7 @@ export function TicketTable({
   onPageChange,
   onConfirmClaim,
   onPrint,
+  onEdit,
 }: TicketTableProps) {
   const from = pagination.matched === 0 ? 0 : (pagination.page - 1) * pagination.pageSize + 1;
   const to = Math.min(pagination.page * pagination.pageSize, pagination.matched);
@@ -109,6 +112,14 @@ export function TicketTable({
                         )}
                         <button type="button" className="btn btn-print" onClick={() => onPrint(ticket.id)}>
                           Print
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-icon"
+                          aria-label="Edit"
+                          onClick={() => onEdit(ticket)}
+                        >
+                          <Pencil size={16} />
                         </button>
                       </div>
                     </td>
