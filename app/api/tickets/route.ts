@@ -1,46 +1,95 @@
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { serializeTicket } from "@/lib/tickets";
+import { isIsoDate, startOfWeekToDate, todayInAddis, serializeTicket } from "@/lib/tickets";
 
 export const runtime = "nodejs";
 
+const DEFAULT_PAGE_SIZE = 10;
+const MAX_PAGE_SIZE = 50;
+
 function asString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function dateRangeWhere(preset: string | null, fromRaw: string, toRaw: string): Prisma.TicketWhereInput {
+  if (preset === "daily") {
+    const today = todayInAddis();
+    return { date: today };
+  }
+
+  if (preset === "weekly") {
+    const { from, to } = startOfWeekToDate();
+    return { date: { gte: from, lte: to } };
+  }
+
+  if (preset === "custom" && isIsoDate(fromRaw) && isIsoDate(toRaw)) {
+    const from = fromRaw <= toRaw ? fromRaw : toRaw;
+    const to = fromRaw <= toRaw ? toRaw : fromRaw;
+    return { date: { gte: from, lte: to } };
+  }
+
+  return {};
+}
+
+function ticketWhere(
+  status: string | null,
+  q: string,
+  dateFilter: Prisma.TicketWhereInput,
+): Prisma.TicketWhereInput {
+  return {
+    ...dateFilter,
+    ...(status === "unclaimed" || status === "claimed" ? { status } : {}),
+    ...(q
+      ? {
+          OR: [
+            { plateNumber: { contains: q, mode: "insensitive" } },
+            ...(Number.isFinite(Number(q)) ? [{ number: Number(q) }] : []),
+          ],
+        }
+      : {}),
+  };
 }
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
   const q = searchParams.get("q")?.trim() ?? "";
+  const datePreset = searchParams.get("date");
+  const from = searchParams.get("from")?.trim() ?? "";
+  const to = searchParams.get("to")?.trim() ?? "";
+  const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  const pageSize = Math.min(
+    MAX_PAGE_SIZE,
+    Math.max(1, Number(searchParams.get("pageSize")) || DEFAULT_PAGE_SIZE),
+  );
+  const where = ticketWhere(status, q, dateRangeWhere(datePreset, from, to));
 
-  const tickets = await prisma.ticket.findMany({
-    where: {
-      ...(status === "unclaimed" || status === "claimed" ? { status } : {}),
-      ...(q
-        ? {
-            OR: [
-              { driverName: { contains: q, mode: "insensitive" } },
-              { plateNumber: { contains: q, mode: "insensitive" } },
-              ...(Number.isFinite(Number(q)) ? [{ number: Number(q) }] : []),
-            ],
-          }
-        : {}),
-    },
-    orderBy: { number: "desc" },
-  });
-
-  const [total, claimedCount] = await Promise.all([
-    prisma.ticket.count(),
-    prisma.ticket.count({ where: { status: "claimed" } }),
+  const [tickets, matched, claimedCount] = await Promise.all([
+    prisma.ticket.findMany({
+      where,
+      orderBy: { number: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.ticket.count({ where }),
+    prisma.ticket.count({ where: { ...where, status: "claimed" } }),
   ]);
+
+  const pageCount = Math.max(1, Math.ceil(matched / pageSize));
 
   return NextResponse.json({
     tickets: tickets.map(serializeTicket),
     counts: {
-      total,
+      total: matched,
       claimed: claimedCount,
-      unclaimed: total - claimedCount,
+      unclaimed: matched - claimedCount,
+    },
+    pagination: {
+      page,
+      pageSize,
+      matched,
+      pageCount,
     },
   });
 }
@@ -71,24 +120,41 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Amount must be a number greater than zero." }, { status: 400 });
   }
 
-  const ticket = await prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(917431)`;
-    const last = await tx.ticket.aggregate({ _max: { number: true } });
+  try {
+    const ticket = await createTicketWithNextNumber({
+      date,
+      driverName,
+      plateNumber,
+      type,
+      origin,
+      destination,
+      amountBirr: new Prisma.Decimal(amount.toFixed(2)),
+    });
+    return NextResponse.json(serializeTicket(ticket), { status: 201 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Could not generate ticket.";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+async function createTicketWithNextNumber(
+  data: Omit<Prisma.TicketCreateInput, "number" | "status">,
+) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const last = await prisma.ticket.aggregate({ _max: { number: true } });
     const next = (last._max.number ?? 0) + 1;
 
-    return tx.ticket.create({
-      data: {
-        number: next,
-        date,
-        driverName,
-        plateNumber,
-        type,
-        origin,
-        destination,
-        amountBirr: new Prisma.Decimal(amount.toFixed(2)),
-      },
-    });
-  });
+    try {
+      return await prisma.ticket.create({
+        data: { ...data, number: next },
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        continue;
+      }
+      throw err;
+    }
+  }
 
-  return NextResponse.json(serializeTicket(ticket), { status: 201 });
+  throw new Error("Could not assign a ticket number. Try again.");
 }

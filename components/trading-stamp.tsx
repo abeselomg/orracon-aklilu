@@ -1,6 +1,6 @@
 export function TradingStamp() {
   return (
-    <div className="stamp" aria-label="Claimed — Orracon Trading Plc">
+    <div className="stamp" aria-label="Paid — Orracon Trading Plc">
       <svg viewBox="0 0 160 160">
         <circle cx="80" cy="80" r="74" fill="none" stroke="#1d4e89" strokeWidth="4" />
         <circle cx="80" cy="80" r="66" fill="none" stroke="#1d4e89" strokeWidth="1.5" />

@@ -2,15 +2,13 @@
 
 import type { TicketDTO } from "@/lib/tickets";
 import { CraneWatermark } from "@/components/crane-watermark";
+import { MarkPaidButton } from "@/components/mark-paid-button";
 import { OrraconLogo } from "@/components/orracon-logo";
 import { TradingStamp } from "@/components/trading-stamp";
 
 type ReceiptCardProps = {
   ticket: TicketDTO;
-  confirmId: string | null;
   busy: boolean;
-  onAskClaim: (id: string) => void;
-  onCancelClaim: () => void;
   onConfirmClaim: (number: number) => void;
   onPrint: (id: string) => void;
   printing: boolean;
@@ -18,16 +16,12 @@ type ReceiptCardProps = {
 
 export function ReceiptCard({
   ticket,
-  confirmId,
   busy,
-  onAskClaim,
-  onCancelClaim,
   onConfirmClaim,
   onPrint,
   printing,
 }: ReceiptCardProps) {
   const claimed = ticket.status === "claimed";
-  const asking = confirmId === ticket.id;
 
   return (
     <article
@@ -83,7 +77,7 @@ export function ReceiptCard({
         </p>
         <p className="field">
           የአስሪው ፊርማ / Issuer{" "}
-          <b className="signature">{claimed ? "Claimed — paid" : "Unclaimed"}</b>
+          <b className="signature">{claimed ? "Paid" : "Unpaid"}</b>
         </p>
       </div>
 
@@ -94,30 +88,8 @@ export function ReceiptCard({
       <div className="receipt-actions no-print">
         {claimed ? (
           <span className="paid-pill">Paid</span>
-        ) : asking ? (
-          <>
-            <span className="confirm-copy">Mark this ticket as paid?</span>
-            <button
-              type="button"
-              className="btn btn-claim"
-              disabled={busy}
-              onClick={() => onConfirmClaim(ticket.number)}
-            >
-              Yes, claim
-            </button>
-            <button type="button" className="btn btn-ghost" onClick={onCancelClaim}>
-              Cancel
-            </button>
-          </>
         ) : (
-          <button
-            type="button"
-            className="btn btn-claim"
-            disabled={busy}
-            onClick={() => onAskClaim(ticket.id)}
-          >
-            Claim
-          </button>
+          <MarkPaidButton ticketNumber={ticket.number} busy={busy} onConfirm={onConfirmClaim} />
         )}
         <button type="button" className="btn btn-print" onClick={() => onPrint(ticket.id)}>
           Print
