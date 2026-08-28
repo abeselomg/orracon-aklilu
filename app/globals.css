@@ -1,0 +1,456 @@
+@import "tailwindcss";
+
+:root {
+  --desk: #231c14;
+  --desk-ink: #f3e6c8;
+  --brass: #c6a45a;
+  --paper: #f6e7c3;
+  --paper-edge: #d7c49a;
+  --ink: #1b140b;
+  --rust: #a84b1f;
+  --stamp: #1d4e89;
+  --line: #6b542e;
+  --muted: #6e5a3a;
+}
+
+@theme inline {
+  --font-sans: var(--font-ethiopic-sans), var(--font-source-serif), serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  color: var(--desk-ink);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(198, 164, 90, 0.14), transparent 28%),
+    repeating-linear-gradient(
+      90deg,
+      #1c160f 0px,
+      #241d15 12px,
+      #1a1510 24px
+    );
+  font-family: var(--font-ethiopic-sans), var(--font-source-serif), "Noto Sans Ethiopic", serif;
+}
+
+main {
+  min-height: 100vh;
+}
+
+.desk {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 28px 0 64px;
+}
+
+.mast {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-end;
+  padding-bottom: 22px;
+  border-bottom: 1px solid rgba(198, 164, 90, 0.35);
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: var(--brass);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+}
+
+.mast h1 {
+  margin: 0;
+  font-family: var(--font-ethiopic-serif), serif;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.lede {
+  margin: 8px 0 0;
+  max-width: 42ch;
+  color: #d8c7a3;
+}
+
+.counts {
+  display: flex;
+  gap: 18px;
+  margin: 0;
+}
+
+.counts div {
+  min-width: 88px;
+  padding: 10px 12px;
+  border: 1px solid rgba(198, 164, 90, 0.35);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.counts dt {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+
+.counts dd {
+  margin: 4px 0 0;
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.issue-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 22px 0 16px;
+  padding: 16px;
+  background: rgba(12, 9, 6, 0.45);
+  border: 1px solid rgba(198, 164, 90, 0.28);
+}
+
+.issue-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: #e6d3ad;
+}
+
+.issue-form input,
+.search {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #c6a45a;
+  background: #f7ead0;
+  color: var(--ink);
+  padding: 8px 10px;
+  font: inherit;
+}
+
+.issue-form input:focus,
+.search:focus,
+.btn:focus-visible,
+.chip:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+
+.btn {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  padding: 10px 14px;
+  letter-spacing: 0.04em;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-generate {
+  align-self: end;
+  background: var(--brass);
+  color: #1b140b;
+  font-weight: 700;
+}
+
+.btn-claim {
+  background: #8b2e12;
+  color: #f7ead0;
+}
+
+.btn-print,
+.btn-ghost {
+  background: transparent;
+  color: var(--desk-ink);
+  border: 1px solid rgba(243, 230, 200, 0.35);
+}
+
+.receipt-actions .btn-print,
+.receipt-actions .btn-ghost {
+  color: var(--ink);
+  border-color: rgba(27, 20, 11, 0.25);
+}
+
+.banner {
+  background: #8b2e12;
+  color: #f7ead0;
+  padding: 10px 14px;
+  margin: 0 0 16px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin: 8px 0 20px;
+}
+
+.chips {
+  display: flex;
+  gap: 8px;
+}
+
+.chip {
+  background: transparent;
+  color: var(--desk-ink);
+  border: 1px solid rgba(243, 230, 200, 0.3);
+  padding: 8px 12px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.chip.active {
+  background: var(--brass);
+  color: #1b140b;
+  border-color: var(--brass);
+}
+
+.search {
+  flex: 1;
+  min-width: 180px;
+}
+
+.empty {
+  color: #d8c7a3;
+}
+
+.ticket-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.receipt {
+  position: relative;
+  overflow: hidden;
+  background:
+    repeating-radial-gradient(circle at 0 0, rgba(212, 227, 154, 0.22) 0 8px, transparent 8px 16px),
+    repeating-radial-gradient(circle at 100% 100%, rgba(240, 213, 106, 0.18) 0 10px, transparent 10px 20px),
+    linear-gradient(180deg, #fbf3dc 0%, var(--paper) 100%);
+  color: var(--ink);
+  border: 1px solid var(--paper-edge);
+  padding: 14px 16px 12px;
+  min-height: 280px;
+}
+
+.receipt::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border: 1px dashed rgba(107, 84, 46, 0.35);
+  pointer-events: none;
+}
+
+.crane-watermark {
+  position: absolute;
+  right: 8px;
+  bottom: 28px;
+  width: 58%;
+  height: auto;
+  pointer-events: none;
+}
+
+.receipt-head {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.receipt-logo {
+  width: 52px;
+  height: 52px;
+}
+
+.receipt-amharic-name,
+.receipt-english-name,
+.receipt-phones {
+  margin: 0;
+  line-height: 1.25;
+}
+
+.receipt-amharic-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.receipt-english-name {
+  font-family: var(--font-source-serif), serif;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.receipt-phones {
+  font-size: 0.78rem;
+}
+
+.receipt-ids {
+  text-align: right;
+  font-size: 0.78rem;
+}
+
+.receipt-ids p {
+  margin: 0 0 6px;
+}
+
+.receipt-ids span {
+  display: block;
+  color: var(--muted);
+}
+
+.receipt-no {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  font-size: 1.05rem;
+}
+
+.receipt-title {
+  margin: 10px 0 0;
+  text-align: center;
+  color: var(--rust);
+  font-family: var(--font-ethiopic-serif), serif;
+  font-size: 1.35rem;
+}
+
+.receipt-title-en {
+  margin: 0 0 8px;
+  text-align: center;
+  color: var(--rust);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.receipt-fields {
+  position: relative;
+  z-index: 1;
+}
+
+.field {
+  margin: 0 0 8px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 4px;
+  font-size: 0.84rem;
+}
+
+.field b {
+  font-weight: 700;
+  margin-left: 8px;
+}
+
+.field-split {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 12px;
+}
+
+.signature {
+  font-family: "Segoe Script", "Brush Script MT", cursive;
+  color: var(--stamp);
+}
+
+.stamp {
+  position: absolute;
+  right: 18px;
+  bottom: 42px;
+  width: 108px;
+  height: 108px;
+  transform: rotate(-12deg);
+  opacity: 0.82;
+  z-index: 2;
+}
+
+.receipt-footer {
+  margin: 10px 0 0;
+  text-align: center;
+  color: var(--rust);
+  font-size: 0.72rem;
+}
+
+.receipt-actions {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.paid-pill {
+  background: var(--stamp);
+  color: white;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.confirm-copy {
+  font-size: 0.82rem;
+}
+
+@media (max-width: 860px) {
+  .mast,
+  .issue-form,
+  .ticket-grid,
+  .field-split,
+  .receipt-head {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .mast,
+  .toolbar {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .receipt-ids {
+    text-align: left;
+  }
+}
+
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .desk {
+    width: 100%;
+    padding: 0;
+  }
+
+  .ticket-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .receipt {
+    break-inside: avoid;
+    box-shadow: none;
+  }
+
+  .desk.printing-one .ticket-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .desk.printing-one .receipt:not(.is-printing) {
+    display: none !important;
+  }
+}

@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TicketStatus {
+  unclaimed
+  claimed
+}
+
+model Ticket {
+  id          String       @id @default(cuid())
+  number      Int          @unique
+  date        String
+  driverName  String
+  plateNumber String
+  type        String
+  origin      String
+  destination String
+  amountBirr  Decimal      @db.Decimal(12, 2)
+  status      TicketStatus @default(unclaimed)
+  createdAt   DateTime     @default(now())
+  claimedAt   DateTime?
+}
