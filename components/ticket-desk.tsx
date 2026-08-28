@@ -6,7 +6,7 @@ import { ReceiptCard } from "@/components/receipt-card";
 import { TicketTable } from "@/components/ticket-table";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { parseIsoDate, toIsoDate, todayInAddis, type TicketDTO, type TicketStatus } from "@/lib/tickets";
+import { formatAmount, formatTicketNumber, parseIsoDate, parseTicketNumber, toIsoDate, todayInAddis, type TicketDTO, type TicketStatus } from "@/lib/tickets";
 
 type Filter = "all" | TicketStatus;
 type DatePreset = "all" | "daily" | "weekly" | "custom";
@@ -14,7 +14,14 @@ type DatePreset = "all" | "daily" | "weekly" | "custom";
 type ApiPayload = {
   error?: string;
   tickets?: TicketDTO[];
-  counts?: { total: number; unclaimed: number; claimed: number };
+  nextNumber?: number;
+  counts?: {
+    total: number;
+    unclaimed: number;
+    claimed: number;
+    claimedAmount: string;
+    unclaimedAmount: string;
+  };
   pagination?: { page: number; pageSize: number; matched: number; pageCount: number };
 } & Partial<TicketDTO>;
 
@@ -31,6 +38,7 @@ async function readJson(res: Response): Promise<ApiPayload> {
 const PAGE_SIZE = 10;
 
 const emptyForm = {
+  number: "",
   date: "",
   driverName: "",
   plateNumber: "",
@@ -45,7 +53,13 @@ export function TicketDesk() {
   const [tickets, setTickets] = useState<TicketDTO[]>([]);
   const [latestTicket, setLatestTicket] = useState<TicketDTO | null>(null);
   const [justCreated, setJustCreated] = useState(false);
-  const [counts, setCounts] = useState({ total: 0, unclaimed: 0, claimed: 0 });
+  const [counts, setCounts] = useState({
+    total: 0,
+    unclaimed: 0,
+    claimed: 0,
+    claimedAmount: "0.00",
+    unclaimedAmount: "0.00",
+  });
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -60,7 +74,11 @@ export function TicketDesk() {
   const [generating, setGenerating] = useState(false);
   const [printId, setPrintId] = useState<string | null>(null);
   const [listLoading, setListLoading] = useState(true);
+  const [numberTaken, setNumberTaken] = useState(false);
+  const [numberChecking, setNumberChecking] = useState(false);
   const loadSeq = useRef(0);
+  const suggestedNumber = useRef("");
+  const numberCheckSeq = useRef(0);
 
   const load = useCallback(
     async (
@@ -88,7 +106,25 @@ export function TicketDesk() {
       if (seq !== loadSeq.current) return;
       if (!res.ok) throw new Error(data.error ?? "Could not load tickets.");
       setTickets(data.tickets ?? []);
-      setCounts(data.counts ?? { total: 0, unclaimed: 0, claimed: 0 });
+      setCounts(
+        data.counts ?? {
+          total: 0,
+          unclaimed: 0,
+          claimed: 0,
+          claimedAmount: "0.00",
+          unclaimedAmount: "0.00",
+        },
+      );
+      if (typeof data.nextNumber === "number") {
+        const label = formatTicketNumber(data.nextNumber);
+        setForm((current) => {
+          if (!current.number || current.number === suggestedNumber.current) {
+            suggestedNumber.current = label;
+            return { ...current, number: label };
+          }
+          return current;
+        });
+      }
       const next = data.pagination ?? { page: nextPage, pageSize: PAGE_SIZE, matched: 0, pageCount: 1 };
       setPagination(next);
       setListLoading(false);
@@ -102,6 +138,39 @@ export function TicketDesk() {
   useEffect(() => {
     setForm((current) => (current.date ? current : { ...current, date: todayInAddis() }));
   }, []);
+
+  useEffect(() => {
+    const parsed = parseTicketNumber(form.number);
+    setNumberTaken(false);
+    if (parsed === undefined) {
+      setNumberChecking(false);
+      return;
+    }
+
+    const seq = ++numberCheckSeq.current;
+    const handle = window.setTimeout(() => {
+      setNumberChecking(true);
+      fetch(`/api/tickets/available?number=${parsed}`)
+        .then((res) => res.json() as Promise<{ taken?: boolean }>)
+        .then((data) => {
+          if (seq !== numberCheckSeq.current) return;
+          setNumberTaken(Boolean(data.taken));
+        })
+        .catch(() => {
+          if (seq !== numberCheckSeq.current) return;
+          setNumberTaken(false);
+        })
+        .finally(() => {
+          if (seq !== numberCheckSeq.current) return;
+          setNumberChecking(false);
+        });
+    }, 2000);
+
+    return () => {
+      window.clearTimeout(handle);
+      numberCheckSeq.current += 1;
+    };
+  }, [form.number]);
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -139,6 +208,10 @@ export function TicketDesk() {
 
   async function onGenerate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (numberTaken) {
+      setError("That ticket number is already used.");
+      return;
+    }
     setError("");
     setGenerating(true);
     try {
@@ -151,6 +224,11 @@ export function TicketDesk() {
       if (!res.ok) throw new Error(payload.error ?? "Could not generate ticket.");
       setLatestTicket(payload as TicketDTO);
       setJustCreated(true);
+      if (typeof payload.nextNumber === "number") {
+        const label = formatTicketNumber(payload.nextNumber);
+        suggestedNumber.current = label;
+        setForm((current) => ({ ...current, number: label }));
+      }
       setPage(1);
       await load(filter, debouncedQuery, 1, datePreset, customFrom, customTo);
     } catch (err) {
@@ -197,6 +275,32 @@ export function TicketDesk() {
       </header>
 
       <form className="issue-form no-print" onSubmit={onGenerate}>
+        <label>
+          No.
+          <input
+            required
+            inputMode="numeric"
+            pattern="\d+"
+            value={form.number}
+            placeholder="00001"
+            onChange={(e) => setForm({ ...form, number: e.target.value })}
+            onBlur={() => {
+              const parsed = form.number.replace(/\D/g, "");
+              if (!parsed) return;
+              const n = Number(parsed);
+              if (Number.isInteger(n) && n >= 1) {
+                setForm((current) => ({ ...current, number: formatTicketNumber(n) }));
+              }
+            }}
+          />
+          {numberChecking ? (
+            <span className="field-hint">Checking number…</span>
+          ) : numberTaken ? (
+            <span className="field-hint field-hint-error" role="alert">
+              This number is already used.
+            </span>
+          ) : null}
+        </label>
         <label>
           ቀን / Date
           <DateField value={form.date} onChange={(date) => setForm({ ...form, date })} />
@@ -258,7 +362,12 @@ export function TicketDesk() {
             onChange={(e) => setForm({ ...form, amountBirr: e.target.value })}
           />
         </label>
-        <button className="btn btn-generate" type="submit" disabled={generating || busy} aria-busy={generating}>
+        <button
+          className="btn btn-generate"
+          type="submit"
+          disabled={generating || busy || numberTaken || numberChecking}
+          aria-busy={generating}
+        >
           {generating ? "Generating…" : "Generate"}
         </button>
       </form>
@@ -417,6 +526,14 @@ export function TicketDesk() {
         <div>
           <dt>Unpaid</dt>
           <dd>{listLoading ? <span className="skel skel-stat" /> : counts.unclaimed}</dd>
+        </div>
+        <div>
+          <dt>Total paid amounts</dt>
+          <dd>{listLoading ? <span className="skel skel-stat" /> : formatAmount(counts.claimedAmount)}</dd>
+        </div>
+        <div>
+          <dt>Total unpaid amounts</dt>
+          <dd>{listLoading ? <span className="skel skel-stat" /> : formatAmount(counts.unclaimedAmount)}</dd>
         </div>
       </dl>
 

@@ -11,7 +11,7 @@
   --stamp: #1d4e89;
   --line: #6b542e;
   --muted: #6e5a3a;
-  --background: #f7ead0;
+  --background: #1c160f;
   --foreground: #1b140b;
   --popover: #fbf3dc;
   --popover-foreground: #1b140b;
@@ -47,11 +47,13 @@
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
   min-height: 100%;
   color: var(--desk-ink);
-  background:
+  background-color: #1c160f;
+  background-image:
     radial-gradient(circle at 12% 8%, rgba(198, 164, 90, 0.14), transparent 28%),
     repeating-linear-gradient(
       90deg,
@@ -145,6 +147,15 @@ main {
   gap: 6px;
   font-size: 0.78rem;
   color: #e6d3ad;
+}
+
+.field-hint {
+  font-size: 0.72rem;
+  color: #d8c7a3;
+}
+
+.field-hint-error {
+  color: #f3b4a0;
 }
 
 .issue-form input,
@@ -303,7 +314,7 @@ main {
 
 .report-stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
   margin: 0 0 16px;
 }
@@ -325,7 +336,7 @@ main {
 .report-stats dd {
   margin: 8px 0 0;
   min-height: 1.6rem;
-  font-size: 1.85rem;
+  font-size: 1.45rem;
   font-variant-numeric: tabular-nums;
   color: var(--desk-ink);
 }

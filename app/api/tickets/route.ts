@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { isIsoDate, startOfWeekToDate, todayInAddis, serializeTicket } from "@/lib/tickets";
+import { isIsoDate, parseTicketNumber, startOfWeekToDate, todayInAddis, serializeTicket } from "@/lib/tickets";
 
 export const runtime = "nodejs";
 
@@ -65,7 +65,7 @@ export async function GET(request: Request) {
   );
   const where = ticketWhere(status, q, dateRangeWhere(datePreset, from, to));
 
-  const [tickets, matched, claimedCount] = await Promise.all([
+  const [tickets, matched, claimedCount, claimedSum, unclaimedSum, nextNumberRow] = await Promise.all([
     prisma.ticket.findMany({
       where,
       orderBy: { number: "desc" },
@@ -74,16 +74,28 @@ export async function GET(request: Request) {
     }),
     prisma.ticket.count({ where }),
     prisma.ticket.count({ where: { ...where, status: "claimed" } }),
+    prisma.ticket.aggregate({
+      where: { ...where, status: "claimed" },
+      _sum: { amountBirr: true },
+    }),
+    prisma.ticket.aggregate({
+      where: { ...where, status: "unclaimed" },
+      _sum: { amountBirr: true },
+    }),
+    prisma.ticket.aggregate({ _max: { number: true } }),
   ]);
 
   const pageCount = Math.max(1, Math.ceil(matched / pageSize));
 
   return NextResponse.json({
     tickets: tickets.map(serializeTicket),
+    nextNumber: (nextNumberRow._max.number ?? 0) + 1,
     counts: {
       total: matched,
       claimed: claimedCount,
       unclaimed: matched - claimedCount,
+      claimedAmount: (claimedSum._sum.amountBirr ?? new Prisma.Decimal(0)).toFixed(2),
+      unclaimedAmount: (unclaimedSum._sum.amountBirr ?? new Prisma.Decimal(0)).toFixed(2),
     },
     pagination: {
       page,
@@ -110,9 +122,15 @@ export async function POST(request: Request) {
   const origin = asString(data.origin);
   const destination = asString(data.destination);
   const amountRaw = asString(data.amountBirr);
+  const numberRaw = typeof data.number === "number" ? String(data.number) : asString(data.number);
 
-  if (!date || !driverName || !plateNumber || !type || !origin || !destination || !amountRaw) {
+  if (!date || !driverName || !plateNumber || !type || !origin || !destination || !amountRaw || !numberRaw) {
     return NextResponse.json({ error: "Fill every field before generating a ticket." }, { status: 400 });
+  }
+
+  const ticketNumber = parseTicketNumber(numberRaw);
+  if (ticketNumber === undefined) {
+    return NextResponse.json({ error: "Ticket number must be a whole number of 1 or more." }, { status: 400 });
   }
 
   const amount = Number(amountRaw);
@@ -121,40 +139,28 @@ export async function POST(request: Request) {
   }
 
   try {
-    const ticket = await createTicketWithNextNumber({
-      date,
-      driverName,
-      plateNumber,
-      type,
-      origin,
-      destination,
-      amountBirr: new Prisma.Decimal(amount.toFixed(2)),
+    const ticket = await prisma.ticket.create({
+      data: {
+        number: ticketNumber,
+        date,
+        driverName,
+        plateNumber,
+        type,
+        origin,
+        destination,
+        amountBirr: new Prisma.Decimal(amount.toFixed(2)),
+      },
     });
-    return NextResponse.json(serializeTicket(ticket), { status: 201 });
+    const next = await prisma.ticket.aggregate({ _max: { number: true } });
+    return NextResponse.json(
+      { ...serializeTicket(ticket), nextNumber: (next._max.number ?? ticketNumber) + 1 },
+      { status: 201 },
+    );
   } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return NextResponse.json({ error: "That ticket number is already used." }, { status: 409 });
+    }
     const message = err instanceof Error ? err.message : "Could not generate ticket.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
-
-async function createTicketWithNextNumber(
-  data: Omit<Prisma.TicketCreateInput, "number" | "status">,
-) {
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    const last = await prisma.ticket.aggregate({ _max: { number: true } });
-    const next = (last._max.number ?? 0) + 1;
-
-    try {
-      return await prisma.ticket.create({
-        data: { ...data, number: next },
-      });
-    } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-        continue;
-      }
-      throw err;
-    }
-  }
-
-  throw new Error("Could not assign a ticket number. Try again.");
 }

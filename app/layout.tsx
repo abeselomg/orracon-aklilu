@@ -26,7 +26,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="am"
-      className={`${ethiopicSans.variable} ${ethiopicSerif.variable} ${sourceSerif.variable} h-full antialiased`}
+      className={`${ethiopicSans.variable} ${ethiopicSerif.variable} ${sourceSerif.variable} min-h-full antialiased`}
     >
       <body className="min-h-full">{children}</body>
     </html>

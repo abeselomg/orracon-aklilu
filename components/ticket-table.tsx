@@ -1,6 +1,6 @@
 "use client";
 
-import { formatPaidAt, type TicketDTO } from "@/lib/tickets";
+import { formatAmount, formatPaidAt, type TicketDTO } from "@/lib/tickets";
 import { MarkPaidButton } from "@/components/mark-paid-button";
 
 type Pagination = {
@@ -97,7 +97,7 @@ export function TicketTable({
                     <td>{ticket.type}</td>
                     <td>{ticket.origin}</td>
                     <td>{ticket.destination}</td>
-                    <td className="num">{ticket.amountBirr}</td>
+                    <td className="num">{formatAmount(ticket.amountBirr)}</td>
                     <td>{claimed ? "Paid" : "Unpaid"}</td>
                     <td className="num">{formatPaidAt(ticket.claimedAt)}</td>
                     <td className="no-print">

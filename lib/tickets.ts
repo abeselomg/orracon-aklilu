@@ -18,8 +18,23 @@ export type TicketDTO = {
   claimedAt: string | null;
 };
 
+export function formatAmount(value: string | number): string {
+  const amount = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(amount)) return "0.00";
+  return amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 export function formatTicketNumber(number: number): string {
-  return String(number).padStart(4, "0");
+  return String(number).padStart(5, "0");
+}
+
+export function parseTicketNumber(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (!/^\d+$/.test(trimmed)) return undefined;
+  const number = Number(trimmed);
+  if (!Number.isInteger(number) || number < 1) return undefined;
+  return number;
 }
 
 export function serializeTicket(ticket: Ticket): TicketDTO {
